@@ -1,0 +1,29 @@
+{
+  "name": "riptabot",
+  "version": "1.0.0",
+  "description": "Bot interface for ripta realtime api",
+  "main": "app.js",
+  "dependencies": {
+    "botbuilder": "^3.5.0-rc7",
+    "dotenv": "^2.0.0",
+    "restify": "^4.3.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mojotech/riptabot.git"
+  },
+  "keywords": [
+    "bot"
+  ],
+  "author": "Brian Egizi <brian@mojotech.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mojotech/riptabot/issues"
+  },
+  "homepage": "https://github.com/mojotech/riptabot#readme"
+}
