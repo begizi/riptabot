@@ -13,7 +13,9 @@ var connector = new builder.ChatConnector({
   appId: process.env.APP_ID,
   appPassword: process.env.APP_PASSWORD
 });
-var bot = new builder.UniversalBot(connector);
+var bot = new builder.UniversalBot(connector, {
+  persistConversationData: false
+});
 
 server.post('/api/messages', connector.listen());
 
@@ -26,30 +28,74 @@ bot.dialog('/', intent);
 intent.matches('help', builder.DialogAction.send(prompts.helpMessage));
 intent.onDefault(builder.DialogAction.send(prompts.helpMessage));
 
-intent.matches('bus_countdown', [askBusId, answerBusCountdown])
+intent.matches('bus_countdown', [askBusId, askDirection, answerBusCountdown])
+intent.matches('bus_location', [askBusId, askDirection, answerBusCountdown])
+
+bot.dialog('/getBusId', [
+  (session) => {
+    builder.Prompts.text(session, prompts.busIdUnknown);
+  },
+  (session, results, next) => {
+    if (results && results.response) {
+      session.privateConversationData['busId'] = results.response;
+      next();
+    } else {
+      session.replaceDialog('/getBusId');
+    }
+
+  }
+]);
+
+bot.dialog('/getBusDirection', [
+  (session) => {
+    builder.Prompts.text(session, prompts.busDirectionUnknown);
+  },
+  (session, results, next) => {
+    if (results && results.response) {
+      session.privateConversationData['busDirection'] = results.response;
+      next();
+    } else {
+      session.replaceDialog('/getBusDirection');
+    }
+  }
+]);
 
 function askBusId(session, args, next) {
   var busId;
   var entity = builder.EntityRecognizer.findEntity(args.entities, 'bus_id');
   if (entity && entity.entity) {
     busId = entity.entity
-  } else if (session.dialogData.busId) {
-    busId = session.dialogData.busId;
+  } else if (session.privateConversationData.busId) {
+    busId = session.privateConversationData.busId
   }
 
   if (!busId) {
-    builder.Prompts.text(session, prompts.busIdUnknown);
+    session.beginDialog('/getBusId')
   } else {
-    next({ response: busId })
+    session.privateConversationData.busId = busId
+    next(args);
+  }
+}
+
+function askDirection(session, args, next) {
+  var busDirection;
+  var entity = builder.EntityRecognizer.findEntity(args.entities, 'bus_direction');
+  if (entity && entity.entity) {
+    busDirection = entity.entity
+  } else if (session.privateConversationData.busDirection) {
+    busDirection = session.privateConversationData.busDirection
+  }
+
+  if (!busDirection) {
+    session.beginDialog('/getBusDirection')
+  } else {
+    session.privateConversationData.busDirection = busDirection
+    next(args);
   }
 }
 
 function answerBusCountdown(session, results) {
-  if (results.response) {
-    const busId = session.dialogData.busId = results.response;
-    const answer = { busId };
-    session.send("Here is your question details: busId=%(busId)s", answer);
-  } else {
-    session.send("failed to find bus id");
-  }
+  const { busId, busDirection } = session.privateConversationData;
+  session.send("Understood entities: busId=%(busId)s busDirection=%(busDirection)s", { busId, busDirection });
+  session.endConversation();
 }
