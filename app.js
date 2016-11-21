@@ -28,8 +28,8 @@ bot.dialog('/', intent);
 intent.matches('help', builder.DialogAction.send(prompts.helpMessage));
 intent.onDefault(builder.DialogAction.send(prompts.helpMessage));
 
-intent.matches('bus_countdown', [askBusId, askDirection, answerBusCountdown])
-intent.matches('bus_location', [askBusId, askDirection, answerBusCountdown])
+intent.matches('bus_countdown', [askBusId, askDirection, askStopQuery, answerBusCountdown])
+intent.matches('bus_location', [askBusId, askDirection, askStopQuery, answerBusCountdown])
 
 bot.dialog('/getBusId', [
   (session) => {
@@ -56,6 +56,20 @@ bot.dialog('/getBusDirection', [
       next();
     } else {
       session.replaceDialog('/getBusDirection');
+    }
+  }
+]);
+
+bot.dialog('/getStopQuery', [
+  (session) => {
+    builder.Prompts.text(session, prompts.stopQueryUnknown);
+  },
+  (session, results, next) => {
+    if (results && results.response) {
+      session.privateConversationData['stopQuery'] = results.response;
+      next();
+    } else {
+      session.replaceDialog('/getStopQuery');
     }
   }
 ]);
@@ -94,8 +108,30 @@ function askDirection(session, args, next) {
   }
 }
 
+function askStopQuery(session, args, next) {
+  console.log("ARGS: ", args)
+  var stopQuery;
+  var entity = builder.EntityRecognizer.findEntity(args.entities, 'stop_query');
+  if (entity && entity.entity) {
+    stopQuery = entity.entity
+  } else if (session.privateConversationData.stopQuery) {
+    stopQuery = session.privateConversationData.stopQuery
+  }
+
+  if (!stopQuery) {
+    session.beginDialog('/getStopQuery')
+  } else {
+    session.privateConversationData.stopQuery = stopQuery
+    next(args);
+  }
+}
+
 function answerBusCountdown(session, results) {
-  const { busId, busDirection } = session.privateConversationData;
-  session.send("Understood entities: busId=%(busId)s busDirection=%(busDirection)s", { busId, busDirection });
+  const { busId, busDirection, stopQuery } = session.privateConversationData;
+  session.send("Understood entities: busId=%(busId)s busDirection=%(busDirection)s stopQuery=%(stopQuery)s", {
+    busId,
+    busDirection,
+    stopQuery
+  });
   session.endConversation();
 }
