@@ -1,4 +1,4 @@
-require('dotenv').config()
+require('dotenv').config({silent: true});
 
 var builder = require('botbuilder');
 var prompts = require('./prompts');
