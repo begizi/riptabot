@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Bot interface for ripta realtime api",
   "main": "app.js",
+  "engines": {
+    "node": "7.0.0"
+  },
   "dependencies": {
     "botbuilder": "^3.5.0-rc7",
     "dotenv": "^2.0.0",
