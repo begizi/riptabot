@@ -3,6 +3,7 @@ require('dotenv').config({silent: true});
 var builder = require('botbuilder');
 var prompts = require('./prompts');
 var restify = require('restify');
+var R = require('ramda');
 
 var server = restify.createServer();
 server.listen(process.env.PORT || 3978, () => {
@@ -24,9 +25,22 @@ var recognizer = new builder.LuisRecognizer(model);
 var intent = new builder.IntentDialog({ recognizers: [recognizer] });
 bot.dialog('/', intent);
 
+intent.onBegin((session, args, next) => {
+  const { message: { address, entities } } = session;
+  if (address.channelId === 'slack' && address.conversation.isGroup) {
+    const mentions = builder.EntityRecognizer.findAllEntities(entities, 'mention');
+    const botName = address.bot.name
+    const botMentions = R.filter((m) => m.mentioned.name === botName, mentions)
+    if (botMentions.length === 0) {
+      return session.endConversation();
+    }
+  }
+  next(args);
+});
+
 /** Answer help related questions like "what can I say?" */
-intent.matches('help', builder.DialogAction.send(prompts.helpMessage));
-intent.onDefault(builder.DialogAction.send(prompts.helpMessage));
+intent.matches('help', answerHelp);
+intent.onDefault(answerHelp);
 
 intent.matches('bus_countdown', [askBusId, askDirection, askStopQuery, answerBusCountdown])
 intent.matches('bus_location', [askBusId, askDirection, askStopQuery, answerBusCountdown])
@@ -110,7 +124,6 @@ function askDirection(session, args, next) {
 }
 
 function askStopQuery(session, args, next) {
-  console.log("ARGS: ", args)
   var stopQuery;
   var entity = builder.EntityRecognizer.findEntity(args.entities, 'stop_query');
   if (entity && entity.entity) {
@@ -140,5 +153,10 @@ function answerBusCountdown(session, results) {
 function answerStopLocation(session, results) {
   const { stopQuery } = session.privateConversationData;
   session.send("Getting nearest stop. stopQuery=%(stopQuery)s", {stopQuery});
+  session.endConversation();
+}
+
+function answerHelp(session, args, next) {
+  session.send(prompts.helpMessage);
   session.endConversation();
 }
