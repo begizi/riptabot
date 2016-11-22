@@ -30,6 +30,7 @@ intent.onDefault(builder.DialogAction.send(prompts.helpMessage));
 
 intent.matches('bus_countdown', [askBusId, askDirection, askStopQuery, answerBusCountdown])
 intent.matches('bus_location', [askBusId, askDirection, askStopQuery, answerBusCountdown])
+intent.matches('stop_location', [askStopQuery, answerStopLocation])
 
 bot.dialog('/getBusId', [
   (session) => {
@@ -133,5 +134,11 @@ function answerBusCountdown(session, results) {
     busDirection,
     stopQuery
   });
+  session.endConversation();
+}
+
+function answerStopLocation(session, results) {
+  const { stopQuery } = session.privateConversationData;
+  session.send("Getting nearest stop. stopQuery=%(stopQuery)s", {stopQuery});
   session.endConversation();
 }
