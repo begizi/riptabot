@@ -6,7 +6,7 @@ package pb;
 service Ripta {
   rpc Geocode(GeocodeRequest) returns (GeocodeResponse) {}
   rpc ListStops(ListStopsRequest) returns (StopsResponse) {}
-  rpc GetStopsByLocation(Location) returns (StopsResponse) {}
+  rpc GetStopsByLocation(StopLocationRequest) returns (StopsResponse) {}
 }
 
 message Location {
@@ -37,6 +37,12 @@ message GeocodeResponse {
 }
 
 message ListStopsRequest {}
+
+message StopLocationRequest {
+  string route = 1;
+  double lat = 2;
+  double long = 3;
+}
 
 message StopsResponse {
   repeated Stop stop = 1;

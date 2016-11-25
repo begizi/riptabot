@@ -134,8 +134,10 @@ bot.dialog('/getStopsByLocation', [
   (session, results, next) => {
     if (results && results.response) {
       var location = session.privateConversationData['stopQueryLocation'] = session.privateConversationData.geocodes[results.response.entity];
+      const busId = session.privateConversationData.busId;
 
       var queryRequest = {
+        route: busId,
         lat: location.lat,
         long: location.long
       };
@@ -154,7 +156,7 @@ bot.dialog('/getStopsByLocation', [
         session.privateConversationData['stops'] = R.indexBy(R.prop('name'), stops)
 
         if (stops.length == 0) {
-          session.send("No stops are located near %(address)s", {address: location.address})
+          session.send("No stops are located near %(address)s for bus %(busId)s", {address: location.address, busId})
           delete session.privateConversationData.stopQuery;
           delete session.privateConversationData.stopQueryLocation;
           session.replaceDialog('/getStopQuery')
