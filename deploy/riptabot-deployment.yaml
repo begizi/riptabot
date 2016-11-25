@@ -1,0 +1,26 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: riptabot
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        version: alpha
+        tier: botframework
+    spec:
+      containers:
+      - name: riptabot
+        image: gcr.io/riptabot/riptabot:alpha-0.0.1
+        env:
+        - name: PORT
+          value: "3978"
+        - name: APP_ID
+          value: "9a9e92ef-00c9-4317-876f-16e5eec44eda"
+        - name: APP_PASSWORD
+          value: UzqAREe3iNpncpGouZyMq3R
+        - name: SERVER_ADDR
+          value: ripta-server:9001
+        ports:
+        - containerPort: 3978
