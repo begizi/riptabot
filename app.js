@@ -4,6 +4,7 @@ var builder = require('botbuilder');
 var prompts = require('./prompts');
 var restify = require('restify');
 var R = require('ramda');
+var client = require('./client');
 
 var server = restify.createServer();
 server.listen(process.env.PORT || 3978, () => {
@@ -76,15 +77,116 @@ bot.dialog('/getBusDirection', [
 ]);
 
 bot.dialog('/getStopQuery', [
-  (session) => {
-    builder.Prompts.text(session, prompts.stopQueryUnknown);
+  (session, args, next) => {
+    if (session.privateConversationData.stopQuery) {
+      next({ response: session.privateConversationData.stopQuery });
+    } else {
+      builder.Prompts.text(session, prompts.stopQueryUnknown);
+    }
   },
   (session, results, next) => {
     if (results && results.response) {
-      session.privateConversationData['stopQuery'] = results.response;
-      next();
+      var query = results.response;
+
+      client.geocode({ query }, (err, response) => {
+        if (err) {
+          console.log("[error][geocode] ", err);
+          delete session.privateConversationData.stopQuery
+          session.send("Failed to fetch results with your query: ", query);
+          session.replaceDialog('/getStopQuery');
+          return;
+        }
+
+        console.log("[info][geocode] ", response.geocodes)
+
+        if (response.geocodes.length === 0 || response.geocodes[0].address.startsWith("Rhode Island, USA")) {
+          delete session.privateConversationData.stopQuery
+          session.send("No results found for: %(query)s", {query});
+          session.replaceDialog('/getStopQuery');
+          return;
+        }
+
+        if (response.geocodes.length === 1) {
+          session.privateConversationData['stopQueryLocation'] = response.geocodes[0];
+        }
+
+        session.privateConversationData['geocodes'] = R.indexBy(R.prop('address'), response.geocodes)
+        session.beginDialog('/getStopsByLocation')
+      })
     } else {
       session.replaceDialog('/getStopQuery');
+    }
+  }
+]);
+
+bot.dialog('/getStopsByLocation', [
+  (session, args, next) => {
+    if (session.privateConversationData.stopQueryLocation) {
+      next({
+        response: {
+          entity: session.privateConversationData.stopQueryLocation.address
+        }
+      });
+    } else {
+      builder.Prompts.choice(session, "Multiple posible locations found. Please select one", session.privateConversationData.geocodes);
+    }
+  },
+  (session, results, next) => {
+    if (results && results.response) {
+      var location = session.privateConversationData['stopQueryLocation'] = session.privateConversationData.geocodes[results.response.entity];
+
+      var queryRequest = {
+        lat: location.lat,
+        long: location.long
+      };
+
+      client.getStopsByLocation(queryRequest, function(err, response) {
+        if (err) {
+          console.log("[error][stop_query] ", err);
+          session.send("Failed to locate stops within this area: %(address)s", {address: location.address});
+          delete session.privateConversationData.stopQuery;
+          delete session.privateConversationData.stopQueryLocation;
+          session.replaceDialog('/getStopQuery');
+          return;
+        }
+
+        var stops = response.stop
+        session.privateConversationData['stops'] = R.indexBy(R.prop('name'), stops)
+
+        if (stops.length == 0) {
+          session.send("No stops are located near %(address)s", {address: location.address})
+          delete session.privateConversationData.stopQuery;
+          delete session.privateConversationData.stopQueryLocation;
+          session.replaceDialog('/getStopQuery')
+          return;
+        }
+
+        if (stops.length == 1) {
+          session.privateConversationData['stop'] = stops[0]
+        }
+
+        session.beginDialog('/getStopId')
+      })
+    } else {
+      session.replaceDialog('/getStopsByLocation');
+    }
+  }
+]);
+
+bot.dialog('/getStopId', [
+  (session, args, next) => {
+    if (session.privateConversationData.stop) {
+      next({response: { entity: session.privateConversationData.stop.name }});
+    } else {
+      builder.Prompts.choice(session, "Multiple stops found nearby. Please select one", session.privateConversationData.stops);
+    }
+  },
+  (session, results, next) => {
+    if (results && results.response) {
+      session.privateConversationData['stop'] = session.privateConversationData.stops[results.response.entity];
+      next();
+    } else {
+      session.replaceDialog('/getStopId')
     }
   }
 ]);
@@ -132,27 +234,29 @@ function askStopQuery(session, args, next) {
     stopQuery = session.privateConversationData.stopQuery
   }
 
-  if (!stopQuery) {
-    session.beginDialog('/getStopQuery')
-  } else {
-    session.privateConversationData.stopQuery = stopQuery
-    next(args);
-  }
+  session.privateConversationData.stopQuery = stopQuery
+  session.beginDialog('/getStopQuery')
 }
 
 function answerBusCountdown(session, results) {
-  const { busId, busDirection, stopQuery } = session.privateConversationData;
-  session.send("Understood entities: busId=%(busId)s busDirection=%(busDirection)s stopQuery=%(stopQuery)s", {
+  const { busId, busDirection, stopQueryLocation, stop } = session.privateConversationData;
+  console.log(stop)
+  session.send("Understood entities: busId=%(busId)s busDirection=%(busDirection)s stopQuery=%(stopQuery)s stopName=%(stopName)s stopId=%(stopId)s", {
     busId,
     busDirection,
-    stopQuery
+    stopQuery: stopQueryLocation.address,
+    stopName: stop.name,
+    stopId: stop.stopId
   });
   session.endConversation();
 }
 
 function answerStopLocation(session, results) {
-  const { stopQuery } = session.privateConversationData;
-  session.send("Getting nearest stop. stopQuery=%(stopQuery)s", {stopQuery});
+  const { stop, stopQueryLocation } = session.privateConversationData;
+  session.send("Getting nearest stop. stopQuery=%(stopQuery)s stopName=%(stopName)s", {
+    stopQuery: stopQueryLocation.address,
+    stopName: stop.name
+  });
   session.endConversation();
 }
 
