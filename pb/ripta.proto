@@ -7,6 +7,7 @@ service Ripta {
   rpc Geocode(GeocodeRequest) returns (GeocodeResponse) {}
   rpc ListStops(ListStopsRequest) returns (StopsResponse) {}
   rpc GetStopsByLocation(StopLocationRequest) returns (StopsResponse) {}
+  rpc RouteStopsByStopID(RouteStopRequest) returns (RouteStopsResponse) {}
 }
 
 message Location {
@@ -46,4 +47,23 @@ message StopLocationRequest {
 
 message StopsResponse {
   repeated Stop stop = 1;
+}
+
+message RouteStopTime {
+  string scheduleTime = 1;
+  string arrivalTime = 2;
+}
+
+message RouteStop {
+ string stopId = 1;
+ RouteStopTime time = 2;
+}
+
+message RouteStopRequest {
+  string routeId = 1;
+  string stopId = 2;
+}
+
+message RouteStopsResponse {
+  repeated RouteStop stop = 1;
 }

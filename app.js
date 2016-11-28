@@ -1,10 +1,23 @@
 require('dotenv').config({silent: true});
 
 var builder = require('botbuilder');
+var moment = require('moment');
 var prompts = require('./prompts');
 var restify = require('restify');
 var R = require('ramda');
 var client = require('./client');
+
+moment.updateLocale('en', {
+  relativeTime: {
+    future: "in approximately %s",
+    past: "%s ago",
+    m: "1 minute",
+    h: "1 hour",
+    d: "1 day",
+    M: "1 month",
+    y: "1 year"
+  }
+});
 
 var server = restify.createServer();
 server.listen(process.env.PORT || 3978, () => {
@@ -242,15 +255,33 @@ function askStopQuery(session, args, next) {
 
 function answerBusCountdown(session, results) {
   const { busId, busDirection, stopQueryLocation, stop } = session.privateConversationData;
-  console.log(stop)
-  session.send("Understood entities: busId=%(busId)s busDirection=%(busDirection)s stopQuery=%(stopQuery)s stopName=%(stopName)s stopId=%(stopId)s", {
-    busId,
-    busDirection,
-    stopQuery: stopQueryLocation.address,
-    stopName: stop.name,
+  var stopsByStopIdRequest = {
+    routeId: busId,
     stopId: stop.stopId
+  };
+
+  client.routeStopsByStopId(stopsByStopIdRequest, function(err, response) {
+    if (err) {
+      session.send("Failed to find bus information. Please try again later.");
+      session.endConversation();
+      return;
+    }
+
+    var stops = response.stop;
+    if (stops.length === 0) {
+      session.send("No buses will be arriving any time soon at that stop.")
+      session.endConversation()
+      return
+    }
+
+    session.send("The %(busId)s %(busDirection)s will get to %(stopName)s %(time)s", {
+      busId: busId,
+      busDirection: busDirection,
+      stopName: stop.name,
+      time: moment(stops[0].time.arrivalTime).fromNow()
+    });
+    session.endConversation();
   });
-  session.endConversation();
 }
 
 function answerStopLocation(session, results) {
