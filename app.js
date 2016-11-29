@@ -52,6 +52,9 @@ intent.onBegin((session, args, next) => {
   next(args);
 });
 
+/** Add global cancel action */
+intent.endConversationAction('cancel', "Ok bye", {matches: /^(cancel|stop|end|quit|bye)/});
+
 /** Answer help related questions like "what can I say?" */
 intent.matches('help', answerHelp);
 intent.onDefault(answerHelp);
