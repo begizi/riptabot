@@ -1,11 +1,13 @@
 require('dotenv').config({silent: true});
 
 var builder = require('botbuilder');
-var moment = require('moment');
+var moment = require('moment-timezone');
 var prompts = require('./prompts');
 var restify = require('restify');
 var R = require('ramda');
 var client = require('./client');
+
+const USER_TIMEZONE = 'America/New_York';
 
 moment.updateLocale('en', {
   relativeTime: {
@@ -301,9 +303,9 @@ function answerBusCountdown(session, results) {
     session.send("The %(busId)s %(busDirection)s will get to %(stopName)s %(time)s (scheduled %(scheduleTime)s)", {
       busId: busId,
       busDirection: busDirection,
-      scheduleTime: moment(stops[0].time.scheduleTime).format("h:mma"),
-      stopName: stop.name,
-      time: moment(stops[0].time.arrivalTime).fromNow()
+      scheduleTime: moment(stops[0].time.scheduleTime).tz(USER_TIMEZONE).format("h:mma"),
+      stopName: stop.name ,
+      time: moment(stops[0].time.arrivalTime).tz(USER_TIMEZONE).fromNow()
     });
     session.endConversation();
   });
