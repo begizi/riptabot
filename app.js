@@ -284,9 +284,10 @@ function answerBusCountdown(session, results) {
       return
     }
 
-    session.send("The %(busId)s %(busDirection)s will get to %(stopName)s %(time)s", {
+    session.send("The %(busId)s %(busDirection)s will get to %(stopName)s %(time)s (scheduled %(scheduleTime)s)", {
       busId: busId,
       busDirection: busDirection,
+      scheduleTime: moment(stops[0].time.scheduleTime).format("h:mma"),
       stopName: stop.name,
       time: moment(stops[0].time.arrivalTime).fromNow()
     });
