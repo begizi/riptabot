@@ -59,9 +59,9 @@ intent.endConversationAction('cancel', "Ok bye", {matches: /^(cancel|stop|end|qu
 intent.matches('help', answerHelp);
 intent.onDefault(answerHelp);
 
-intent.matches('bus_countdown', [askBusId, askDirection, askStopQuery, answerBusCountdown])
-intent.matches('bus_location', [askBusId, askDirection, askStopQuery, answerBusCountdown])
-intent.matches('stop_location', [askStopQuery, answerStopLocation])
+intent.matches('bus_countdown', [cacheEntities, askBusId, askDirection, askStopQuery, answerBusCountdown])
+intent.matches('bus_location', [cacheEntities, askBusId, askDirection, askStopQuery, answerBusCountdown])
+intent.matches('stop_location', [cacheEntities, askStopQuery, answerStopLocation])
 
 bot.dialog('/getBusId', [
   (session) => {
@@ -215,9 +215,23 @@ bot.dialog('/getStopId', [
   }
 ]);
 
+function cacheEntities(session, args, next) {
+  var busId= builder.EntityRecognizer.findEntity(args.entities, 'bus_id');
+  var busDirection= builder.EntityRecognizer.findEntity(args.entities, 'bus_direction');
+  var stopQuery= builder.EntityRecognizer.findEntity(args.entities, 'stop_query');
+
+  session.privateConversationData.entities = {
+    busId,
+    busDirection,
+    stopQuery
+  }
+
+  next(args)
+}
+
 function askBusId(session, args, next) {
   var busId;
-  var entity = builder.EntityRecognizer.findEntity(args.entities, 'bus_id');
+  var entity = session.privateConversationData.entities.busId;
   if (entity && entity.entity) {
     busId = entity.entity
   } else if (session.privateConversationData.busId) {
@@ -234,7 +248,7 @@ function askBusId(session, args, next) {
 
 function askDirection(session, args, next) {
   var busDirection;
-  var entity = builder.EntityRecognizer.findEntity(args.entities, 'bus_direction');
+  var entity = session.privateConversationData.entities.busDirection;
   if (entity && entity.entity) {
     busDirection = entity.entity
   } else if (session.privateConversationData.busDirection) {
@@ -251,7 +265,7 @@ function askDirection(session, args, next) {
 
 function askStopQuery(session, args, next) {
   var stopQuery;
-  var entity = builder.EntityRecognizer.findEntity(args.entities, 'stop_query');
+  var entity = session.privateConversationData.entities.stopQuery;
   if (entity && entity.entity) {
     stopQuery = entity.entity
   } else if (session.privateConversationData.stopQuery) {
