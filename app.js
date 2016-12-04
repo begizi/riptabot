@@ -154,17 +154,20 @@ bot.dialog('/getStopsByLocation', [
       var location = session.privateConversationData['stopQueryLocation'] = session.privateConversationData.geocodes[results.response.entity];
       const { busId, busDirection } = session.privateConversationData;
 
-      var direction = "0"
-      if (/^(outbound|n|north|e|east)$/.test(busDirection.toLowerCase())) {
-        direction = "1"
-      }
-
       var queryRequest = {
         route: busId,
         lat: location.lat,
-        long: location.long,
-        direction
+        long: location.long
       };
+
+      if (busDirection) {
+        var direction = "0";
+        if (/^(outbound|n|north|e|east)$/.test(busDirection.toLowerCase())) {
+          direction = "1";
+        }
+        queryRequest.direction = direction;
+      }
+
 
       client.getStopsByLocation(queryRequest, function(err, response) {
         if (err) {
